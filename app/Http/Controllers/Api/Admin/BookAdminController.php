@@ -4,16 +4,20 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Book;
 
 class BookAdminController extends Controller
 {
     public function index()
     {
-        return Book::latest()->get();
+        return Cache::remember('books:list', 60, function () {
+            return Book::latest()->get();
+        });
     }
 
     public function store(Request $request)
     {
+        
         $request->validate([
             'title' => 'required',
             'total_pages' => 'required|integer'

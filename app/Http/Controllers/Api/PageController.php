@@ -9,19 +9,29 @@ class PageController extends Controller
 {
     public function getPages($bookId)
     {
-        return Page::where('book_id', $bookId)
-            ->orderBy('page_number')
-            ->get()
-            ->map(function ($page) {
+        return Cache::remember("book:$bookId:pages", 60, function () use ($bookId) {
 
-                return [
-                    'page' => $page->page_number,
-                    'url' => URL::temporarySignedRoute(
-                        'page.view',
-                        now()->addMinutes(5),
-                        ['path' => $page->file_path]
-                    )
-                ];
-            });
+            return Page::where('book_id', $bookId)
+                ->orderBy('page_number')
+                ->get()
+                ->map(function ($page) {
+                    return [
+                        'page' => $page->page_number,
+                        'url' => $this->signedUrl($page->file_path)
+                    ];
+                });
+        });
+    }
+
+    private function signedUrl($path)
+    {
+        return URL::temporarySignedRoute(
+            'page.view',
+            now()->addMinutes(5),
+            [
+                'path' => $path,
+                'user' => auth()->id()
+            ]
+        );
     }
 }

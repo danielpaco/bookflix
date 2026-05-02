@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use App\Services\CryptoService;
 
 class ProcessPdfJob implements ShouldQueue
 {
@@ -30,7 +31,7 @@ class ProcessPdfJob implements ShouldQueue
 
             $content = file_get_contents($file);
 
-            $key = hash('sha256', config('app.key'), true);
+            $key = CryptoService::getPageKey($this->bookId, $index);
             $iv = random_bytes(12);
 
             $encrypted = openssl_encrypt(
