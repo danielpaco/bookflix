@@ -5,16 +5,24 @@ namespace App\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Services\CryptoService;
+use App\Jobs\ProcessPageJob;
+use App\Models\Book;
+use Illuminate\Foundation\Bus\Dispatchable;
 
 class ProcessPdfJob implements ShouldQueue
 {
+    use Dispatchable, Queueable;
+    
     protected $bookId;
     protected $pdfPath;
 
     public function __construct($bookId, $pdfPath)
     {
         $this->bookId = $bookId;
-        $this->pdfPath = storage_path('app/' . $pdfPath);
+
+        $this->pdfPath = storage_path(
+            'app/private/' . $pdfPath
+        );
     }
 
     public function handle()
@@ -25,33 +33,55 @@ class ProcessPdfJob implements ShouldQueue
             mkdir($outputDir, 0777, true);
         }
 
-        exec("gs -sDEVICE=pngalpha -o $outputDir/page-%03d.png -r144 {$this->pdfPath}");
+        if (!file_exists($this->pdfPath)) {
+            throw new \Exception("PDF not found: {$this->pdfPath}");
+        }
 
-        foreach (glob("$outputDir/*.png") as $index => $file) {
+        $command = sprintf(
+            'gs -sDEVICE=pngalpha -o %s/page-%%03d.png -r144 %s',
+            escapeshellarg($outputDir),
+            escapeshellarg($this->pdfPath)
+        );
 
-            $content = file_get_contents($file);
+        \Log::info("RUNNING GS COMMAND");
+        \Log::info($command);
 
-            $key = CryptoService::getPageKey($this->bookId, $index);
-            $iv = random_bytes(12);
+        exec($command . ' 2>&1', $output, $resultCode);
 
-            $encrypted = openssl_encrypt(
-                $content,
-                'aes-256-gcm',
-                $key,
-                0,
-                $iv,
-                $tag
+        \Log::info(print_r($output, true));
+        \Log::info("RESULT CODE: " . $resultCode);
+
+        if ($resultCode !== 0) {
+            throw new \Exception(
+                "Ghostscript failed: " . implode("\n", $output)
             );
+        }
 
-            $path = "books/{$this->bookId}/page_$index.enc";
+        $pages = glob("$outputDir/*.png");
 
-            Storage::disk('minio')->put($path, $iv . $tag . $encrypted);
+        if (empty($pages)) {
+            throw new \Exception("No PNG pages generated");
+        }
 
-            Page::create([
-                'book_id' => $this->bookId,
-                'page_number' => $index,
-                'file_path' => $path
+        foreach ($pages as $index => $file) {
+
+            \Log::info("Dispatching page: " . $file);
+
+            ProcessPageJob::dispatch(
+                $this->bookId,
+                $index,
+                $file
+            )->onQueue('pdf');
+        }
+
+        Book::where('id', $this->bookId)
+            ->update([
+                'status' => 'ready',
+                'pages_count' => count($pages)
             ]);
+
+        if (file_exists($this->pdfPath)) {
+            unlink($this->pdfPath);
         }
     }
 }

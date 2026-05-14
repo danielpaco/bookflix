@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:80"
+
+  redis:
+    image: redis:alpine
+
+  minio:
+    image: minio/minio
+    command: server /data

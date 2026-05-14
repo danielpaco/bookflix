@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use Illuminate\Support\Facades\Cache;
+
 class BookObserver
 {
     public function saved()

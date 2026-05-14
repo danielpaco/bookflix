@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Book extends Model
 {
@@ -13,6 +12,20 @@ class Book extends Model
     protected $fillable = [
         'title',
         'description',
-        'total_pages',
+        'author',
+        'cover',
+        'pdf_path',
+        'pages_count',
+        'status',
+        'is_premium'
     ];
+
+    protected $casts = [
+        'is_premium' => 'boolean'
+    ];
+
+    public function pages()
+    {
+        return $this->hasMany(Page::class);
+    }
 }

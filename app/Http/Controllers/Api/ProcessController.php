@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Jobs\ProcessPdfJob;
 
 class ProcessController extends Controller
 {
@@ -17,7 +18,7 @@ class ProcessController extends Controller
         ProcessPdfJob::dispatch(
             $request->book_id,
             $request->pdf_path
-        );
+        )->onQueue('pdf');
 
         return ['status' => 'processing'];
     }

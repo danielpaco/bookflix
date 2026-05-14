@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use Illuminate\Support\Facades\Cache;
+
 class PageObserver
 {
     public function saved($page)

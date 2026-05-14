@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Book;
+use Illuminate\Http\Request;
+use App\Jobs\ProcessPdfJob;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
+use App\Http\Requests\StoreBookRequest;
 
 class BookAdminController extends Controller
 {
@@ -15,33 +18,72 @@ class BookAdminController extends Controller
         });
     }
 
-    public function store(Request $request)
+    public function show(Book $book)
     {
-        
-        $request->validate([
-            'title' => 'required',
-            'total_pages' => 'required|integer'
+        return $book->load('pages');
+    }
+
+    public function store(StoreBookRequest $request)
+    {
+        $pdfPath = $request
+            ->file('pdf')
+            ->store('pdfs', 'local');
+
+        $coverPath = null;
+
+        if ($request->hasFile('cover')) {
+
+            $coverPath = $request
+                ->file('cover')
+                ->store('covers');
+        }
+
+        $book = Book::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'author' => $request->author,
+            'cover' => $coverPath,
+            'pdf_path' => $pdfPath,
+            'is_premium' => $request->boolean('is_premium'),
+            'status' => 'processing'
         ]);
 
-        return Book::create($request->all());
+        ProcessPdfJob::dispatch(
+            $book->id,
+            $pdfPath
+        )->onQueue('pdf');
+
+        return response()->json([
+            'message' => 'Book processing started',
+            'book' => $book
+        ]);
+    }
+   
+
+    public function update(Request $request, Book $book)
+    {
+        $book->update($request->only([
+            'title',
+            'description',
+            'author',
+            'is_premium'
+        ]));
+
+        return response()->json($book);
     }
 
-    public function show($id)
+    public function destroy(Book $book)
     {
-        return Book::findOrFail($id);
-    }
+        Storage::delete($book->pdf_path);
 
-    public function update(Request $request, $id)
-    {
-        $book = Book::findOrFail($id);
-        $book->update($request->all());
+        if ($book->cover) {
+            Storage::delete($book->cover);
+        }
 
-        return $book;
-    }
+        $book->delete();
 
-    public function destroy($id)
-    {
-        Book::findOrFail($id)->delete();
-        return response()->json(['ok' => true]);
+        return response()->json([
+            'message' => 'Book deleted'
+        ]);
     }
 }
