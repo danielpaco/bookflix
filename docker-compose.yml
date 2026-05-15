@@ -1,14 +1,110 @@
-version: '3.8'
+version: '3.9'
 
 services:
+
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+
+    container_name: bookflix_app
+
+    restart: unless-stopped
+
+    working_dir: /var/www
+
+    volumes:
+      - ./:/var/www
+
+    depends_on:
+      - mysql
+      - redis
+      - minio
+
+    networks:
+      - bookflix
+
+  nginx:
+    image: nginx:latest
+
+    container_name: bookflix_nginx
+
+    restart: unless-stopped
+
     ports:
       - "8000:80"
 
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+
+    depends_on:
+      - app
+
+    networks:
+      - bookflix
+
+  mysql:
+    image: mysql:8
+
+    container_name: bookflix_mysql
+
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: bookflix
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: root
+      MYSQL_USER: bookflix
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    networks:
+      - bookflix
+
   redis:
-    image: redis:alpine
+    image: redis:latest
+
+    container_name: bookflix_redis
+
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - bookflix
 
   minio:
     image: minio/minio
-    command: server /data
+
+    container_name: bookflix_minio
+
+    restart: unless-stopped
+
+    command: server /data --console-address ":9001"
+
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+    volumes:
+      - minio_data:/data
+
+    networks:
+      - bookflix
+
+volumes:
+  mysql_data:
+  minio_data:
+
+networks:
+  bookflix:
