@@ -28,4 +28,20 @@ class Book extends Model
     {
         return $this->hasMany(Page::class);
     }
+
+    public function progress()
+    {
+        return $this->hasMany(UserBookProgress::class);
+    }
+
+    public function bookmarks()
+    {
+        return $this->hasMany(Bookmark::class);
+    }
+
+    public function reactions()
+    {
+        return $this->hasMany(BookReaction::class);
+    }
+    
 }

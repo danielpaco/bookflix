@@ -5,13 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Like extends Model
+class Bookmark extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'user_id',
         'book_id',
+        'page_number',
+        'note',
     ];
 
     public function book()

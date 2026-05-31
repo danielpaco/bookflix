@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ProcessController;
 
 use App\Http\Controllers\Api\Admin\BookAdminController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\ReadingController;
 
 Route::post('/register', [
     AuthController::class,
@@ -39,17 +40,40 @@ Route::get('/page', function (Request $request) {
         abort(404);
     }
 
+    $page = \App\Models\Page::where(
+        'file_path',
+        $path
+    )->firstOrFail();
+
     $content = Storage::disk('minio')->get($path);
 
-    return response($content)
-        ->header(
-            'Content-Type',
-            'application/octet-stream'
-        )
-        ->header(
-            'Cache-Control',
-            'no-store, no-cache'
-        );
+    $iv = substr($content, 0, 12);
+
+    $tag = substr($content, 12, 16);
+
+    $ciphertext = substr($content, 28);
+
+    $key = \App\Services\CryptoService::getPageKey(
+        $page->book_id,
+        $page->page_number
+    );
+
+    $image = openssl_decrypt(
+        $ciphertext,
+        'aes-256-gcm',
+        $key,
+        0,
+        $iv,
+        $tag
+    );
+
+    if (!$image) {
+        abort(500, 'Decrypt failed');
+    }
+
+    return response($image)
+        ->header('Content-Type', 'image/png')
+        ->header('Cache-Control', 'no-store');
 
 })->middleware('auth:sanctum')
   ->name('page.view');
@@ -72,6 +96,31 @@ Route::middleware([
     Route::get(
         '/books/{book}/pages/{page}',
         [ReaderController::class, 'page']
+    );
+
+    Route::post(
+        '/books/{book}/progress',
+        [ReadingController::class, 'updateProgress']
+    );
+
+    Route::post(
+        '/books/{book}/bookmark',
+        [ReadingController::class, 'bookmark']
+    );
+
+    Route::delete(
+        '/books/{book}/bookmark/{page}',
+        [ReadingController::class, 'removeBookmark']
+    );
+
+    Route::post(
+        '/books/{book}/reaction',
+        [ReadingController::class, 'react']
+    );
+
+    Route::get(
+        '/analytics',
+        [ReadingController::class, 'analytics']
     );
 });
 

@@ -45,9 +45,11 @@ class ProcessPageJob implements ShouldQueue
 
             Log::info("PNG LOADED");
 
+            $pageNumber = $this->index + 1;
+
             $key = CryptoService::getPageKey(
                 $this->bookId,
-                $this->index
+                $pageNumber
             );
 
             $iv = random_bytes(12);
@@ -69,7 +71,7 @@ class ProcessPageJob implements ShouldQueue
 
             $path = "books/{$this->bookId}/page_{$this->index}.enc";
 
-            $result = Storage::disk('minio')->put(
+            $result = Storage::disk('s3')->put(
                 $path,
                 $iv . $tag . $encrypted
             );
@@ -82,7 +84,7 @@ class ProcessPageJob implements ShouldQueue
 
             Page::create([
                 'book_id' => $this->bookId,
-                'page_number' => $this->index,
+                'page_number' => $pageNumber,
                 'file_path' => $path
             ]);
 

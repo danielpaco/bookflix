@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Like extends Model
+class BookReaction extends Model
 {
     use HasFactory;
-
+    
     protected $fillable = [
         'user_id',
         'book_id',
+        'reaction_type',
     ];
 
     public function book()

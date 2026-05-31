@@ -2,6 +2,7 @@ FROM php:8.2-fpm
 
 RUN apt-get update && apt-get install -y \
     git \
+    poppler-utils \
     unzip \
     curl \
     libpng-dev \
@@ -10,9 +11,14 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libonig-dev \
     libxml2-dev \
+    libmagickwand-dev \
     ghostscript \
     supervisor \
-    zip
+    zip \
+    imagemagick
+
+RUN pecl install imagick \
+    && docker-php-ext-enable imagick
 
 RUN docker-php-ext-install \
     pdo \
@@ -41,5 +47,7 @@ RUN chown -R www-data:www-data /var/www
 
 RUN chmod -R 777 /var/www/storage
 RUN chmod -R 777 /var/www/bootstrap/cache
+
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
 
 CMD ["php-fpm"]

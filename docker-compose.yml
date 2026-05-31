@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
 
   app:
@@ -7,7 +5,11 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
 
-    container_name: bookflix_app
+    environment:
+      MINIO_KEY: admin
+      MINIO_SECRET: password123
+      MINIO_BUCKET: bookflix
+      MINIO_ENDPOINT: http://minio:9000
 
     restart: unless-stopped
 
@@ -17,17 +19,20 @@ services:
       - ./:/var/www
 
     depends_on:
-      - mysql
-      - redis
-      - minio
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+      minio:
+        condition: service_started
 
     networks:
       - bookflix
 
   nginx:
     image: nginx:latest
-
-    container_name: bookflix_nginx
 
     restart: unless-stopped
 
@@ -47,8 +52,6 @@ services:
   mysql:
     image: mysql:8
 
-    container_name: bookflix_mysql
-
     restart: unless-stopped
 
     environment:
@@ -60,6 +63,12 @@ services:
     ports:
       - "3306:3306"
 
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
     volumes:
       - mysql_data:/var/lib/mysql
 
@@ -67,22 +76,24 @@ services:
       - bookflix
 
   redis:
-    image: redis:latest
-
-    container_name: bookflix_redis
+    image: redis:7-alpine
 
     restart: unless-stopped
 
     ports:
       - "6379:6379"
 
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
     networks:
       - bookflix
 
   minio:
     image: minio/minio
-
-    container_name: bookflix_minio
 
     restart: unless-stopped
 
@@ -101,6 +112,33 @@ services:
 
     networks:
       - bookflix
+
+  horizon:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+
+    working_dir: /var/www
+
+    volumes:
+      - ./:/var/www
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+      minio:
+        condition: service_started
+
+    command: php artisan horizon
+
+    restart: unless-stopped
+
+    networks:
+      - bookflix  
 
 volumes:
   mysql_data:

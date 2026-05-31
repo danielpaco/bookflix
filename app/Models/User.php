@@ -31,6 +31,21 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class);
     }
 
+    public function progress()
+    {
+        return $this->hasMany(UserBookProgress::class);
+    }
+
+    public function bookmarks()
+    {
+        return $this->hasMany(Bookmark::class);
+    }
+
+    public function reactions()
+    {
+        return $this->hasMany(BookReaction::class);
+    }
+
     public function activeSubscription()
     {
         return $this->hasOne(Subscription::class)
