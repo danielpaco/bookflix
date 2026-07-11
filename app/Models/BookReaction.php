@@ -12,7 +12,7 @@ class BookReaction extends Model
     protected $fillable = [
         'user_id',
         'book_id',
-        'reaction_type',
+        'reaction',
     ];
 
     public function book()

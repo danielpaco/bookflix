@@ -7,10 +7,20 @@ use Illuminate\Http\Request;
 
 class SecurityHeaders
 {
-    public function handle(Request $request, Closure $next)
+    public function handle($request, Closure $next)
     {
-        return $next($request)
-            ->header('X-Frame-Options', 'DENY')
-            ->header('X-Content-Type-Options', 'nosniff');
+        $response = $next($request);
+
+        $response->headers->set(
+            'X-Frame-Options',
+            'DENY'
+        );
+
+        $response->headers->set(
+            'X-Content-Type-Options',
+            'nosniff'
+        );
+
+        return $response;
     }
 }

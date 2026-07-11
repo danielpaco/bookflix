@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Support;
+
+class ApiResponse
+{
+    public static function success(
+        $data = null,
+        string $message = 'Success',
+        int $status = 200
+    )
+    {
+        return response()->json([
+            'success'=>true,
+            'message'=>$message,
+            'data'=>$data
+
+        ],$status);
+    }
+
+    public static function error(
+        string $message,
+        int $status=400,
+        $errors=[]
+    )
+    {
+        return response()->json([
+            'success'=>false,
+            'message'=>$message,
+            'errors'=>$errors
+        ],$status);
+    }
+}

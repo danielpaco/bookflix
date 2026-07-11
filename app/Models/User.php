@@ -9,8 +9,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Subscription;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -46,6 +48,13 @@ class User extends Authenticatable
         return $this->hasMany(BookReaction::class);
     }
 
+    public function favorites()
+    {
+        return $this->hasMany(
+            Favorite::class
+        );
+    }
+
     public function activeSubscription()
     {
         return $this->hasOne(Subscription::class)
@@ -56,9 +65,28 @@ class User extends Authenticatable
             ->where('expires_at', '>', now());
     }
 
-    public function hasActiveSubscription(): bool
+    /*public function hasActiveSubscription(): bool
     {
-        return $this->activeSubscription()->exists();
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where('expires_at', '>', now())
+            ->exists();
+    }*/
+
+    public function hasPremium(): bool
+    {
+        return $this->subscriptions()
+            ->whereIn('status', [
+                'active',
+                'grace',
+            ])
+            ->where('expires_at', '>', now())
+            ->exists();
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->is_admin;
     }
 
     /**
@@ -81,6 +109,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
     }
 }

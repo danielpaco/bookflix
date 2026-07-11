@@ -120,6 +120,12 @@ services:
 
     working_dir: /var/www
 
+    environment:
+      MINIO_KEY: admin
+      MINIO_SECRET: password123
+      MINIO_BUCKET: bookflix
+      MINIO_ENDPOINT: http://minio:9000
+
     volumes:
       - ./:/var/www
 

@@ -207,7 +207,7 @@ return [
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 1,
-            'timeout' => 60,
+            'timeout' => 7200,
             'nice' => 0,
         ],
     ],
@@ -228,7 +228,7 @@ return [
                 'balance' => 'auto',
                 'maxProcesses' => 5,
                 'tries' => 3,
-                'timeout' => 300,
+                'timeout' => 7200,
             ],
 
             'supervisor-images' => [
@@ -241,10 +241,27 @@ return [
         ],
 
         'local' => [
+
             'supervisor-default' => [
                 'connection' => 'redis',
-                'queue' => ['default', 'pdf', 'images'],
-                'maxProcesses' => 3,
+                'queue' => ['default'],
+                'maxProcesses' => 2,
+                'tries' => 3,
+            ],
+
+            'supervisor-pdf' => [
+                'connection' => 'redis',
+                'queue' => ['pdf'],
+                'maxProcesses' => 1,
+                'timeout' => 7200,
+                'tries' => 3,
+            ],
+
+            'supervisor-images' => [
+                'connection' => 'redis',
+                'queue' => ['images'],
+                'maxProcesses' => 2,
+                'tries' => 3,
             ],
         ],
     ],

@@ -2,88 +2,101 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+use App\Support\ApiResponse;
+
+use App\Http\Resources\BookResource;
+use App\Http\Resources\BookListResource;
+
 use App\Models\Book;
 use Illuminate\Http\Request;
 use App\Jobs\ProcessPdfJob;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Requests\StoreBookRequest;
+use App\Http\Requests\Admin\StoreBookRequest;
+use App\Http\Requests\Admin\UpdateBookRequest;
+
+use App\Services\BookService;
 
 class BookAdminController extends Controller
 {
+    protected BookService $bookService;
+
+    public function __construct(
+        BookService $bookService
+    ){
+        $this->bookService = $bookService;
+    }
+
     public function index()
     {
-        return Cache::remember('books:list', 60, function () {
-            return Book::latest()->get();
-        });
+        return ApiResponse::success(
+            BookListResource::collection(
+                $this->bookService
+                    ->list()
+            )
+        );
     }
 
     public function show(Book $book)
     {
-        return $book->load('pages');
+        return ApiResponse::success(
+            new BookResource(
+                $this->bookService
+                    ->show($book)
+            )
+        );
     }
 
     public function store(StoreBookRequest $request)
     {
-        $pdfPath = $request
-            ->file('pdf')
-            ->store('pdfs', 'local');
+        $book = $this->bookService
+                ->create(
+                    $request->validated()
+                );
 
-        $coverPath = null;
-
-        if ($request->hasFile('cover')) {
-
-            $coverPath = $request
-                ->file('cover')
-                ->store('covers');
-        }
-
-        $book = Book::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'author' => $request->author,
-            'cover' => $coverPath,
-            'pdf_path' => $pdfPath,
-            'is_premium' => $request->boolean('is_premium'),
-            'status' => 'processing'
-        ]);
-
-        ProcessPdfJob::dispatch(
-            $book->id,
-            $pdfPath
-        )->onQueue('pdf');
-
-        return response()->json([
-            'message' => 'Book processing started',
-            'book' => $book
-        ]);
+        return ApiResponse::success(
+            new BookResource($book),
+            'Book processing started',
+            201
+        );
     }
    
 
-    public function update(Request $request, Book $book)
+    public function update(UpdateBookRequest $request, Book $book)
     {
-        $book->update($request->only([
-            'title',
-            'description',
-            'author',
-            'is_premium'
-        ]));
-
-        return response()->json($book);
+        return ApiResponse::success(
+            new BookResource(
+                $this->bookService
+                    ->update(
+                        $book,
+                        $request->validated()
+                    )
+            ),
+            'Book updated'
+        );
     }
 
     public function destroy(Book $book)
     {
-        Storage::delete($book->pdf_path);
+        $this->bookService
+            ->delete($book);
 
-        if ($book->cover) {
-            Storage::delete($book->cover);
-        }
-
-        $book->delete();
-
-        return response()->json([
-            'message' => 'Book deleted'
-        ]);
+        return ApiResponse::success(
+            null,
+            'Book deleted'
+        );
+    }
+    private function clearBookCache()
+    {
+        Cache::forget('admin.books');
+        Cache::forget('reader.home');
+        Cache::forget('reader.new');
+        Cache::forget('reader.popular');
+        Cache::forget('reader.premium');
+        Cache::forget('reader.categories');
+        Cache::forget('reader.authors');
     }
 }

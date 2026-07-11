@@ -2,24 +2,32 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\ApiResponse;
+use App\Services\BookProcessingService;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Jobs\ProcessPdfJob;
+use App\Http\Requests\Reading\ProcessBookRequest;
 
 class ProcessController extends Controller
 {
-    public function process(Request $request)
-    {
-        $request->validate([
-            'book_id' => 'required',
-            'pdf_path' => 'required'
-        ]);
+    public function __construct(
+        private BookProcessingService $processing
+    ) {}
 
-        ProcessPdfJob::dispatch(
+    public function process(
+        ProcessBookRequest $request
+    )
+    {
+        $this->processing->process(
             $request->book_id,
             $request->pdf_path
-        )->onQueue('pdf');
+        );
 
-        return ['status' => 'processing'];
+        return ApiResponse::success(
+            [],
+            'Book processing started'
+        );
     }
 }

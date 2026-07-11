@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+
+use App\Support\ApiResponse;
+use App\Http\Resources\UserResource;
+use App\Services\AuthService;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -10,29 +17,70 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
-    {
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
+    protected AuthService $authService;
 
-        return response()->json([
-            'token' => $user->createToken('app')->plainTextToken
-        ]);
+    public function __construct(
+        AuthService $authService
+    ){
+        $this->authService = $authService;
     }
 
-    public function login(Request $request)
+    public function register(RegisteRequest $request)
     {
-        $user = User::where('email', $request->email)->first();
+        $result = $this->authService
+            ->register(
+                $request->validated()
+            );
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
+        return ApiResponse::success(
+            [
+                'token' => $result['token'],
+                'user' => new UserResource(
+                    $result['user']
+                )
+            ],
+            'User registered successfully',
+            201
+        );
+    }
 
-        return [
-            'token' => $user->createToken('app')->plainTextToken
-        ];
+    public function login(LoginRequest $request)
+    {
+        $result = $this->authService
+            ->login(
+                $request->validated()
+            );
+
+        return ApiResponse::success(
+            [
+                'token' => $result['token'],
+                'user' => new UserResource(
+                    $result['user']
+                )
+            ],
+            'Login successful'
+        );
+    }
+
+    public function logout(Request $request)
+    {
+        $this->authService
+            ->logout($request->user());
+
+        return ApiResponse::success(
+            null,
+            'Logout successful'
+        );
+    }
+
+    public function me(Request $request)
+    {
+        return ApiResponse::success(
+
+            new UserResource(
+                $request->user()
+            )
+
+        );
     }
 }

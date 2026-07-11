@@ -2,69 +2,67 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\SubscriptionService;
+use App\Support\ApiResponse;
+
+use App\Http\Resources\PlanResource;
+use App\Http\Resources\SubscriptionResource;
+use App\Http\Request\Subscription\SubscribeRequest;
+
+use Illuminate\Support\Facades\DB;
 use App\Models\Plan;
 use App\Models\Payment;
 use App\Models\Subscription;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 class SubscriptionController extends Controller
 {
-    public function plans()
-    {
-        return Plan::where('is_active', true)
-            ->get();
+    protected SubscriptionService $subscriptionService;
+
+    public function __construct(
+        SubscriptionService $subscriptionService
+    ){
+        $this->subscriptionService = $subscriptionService;
     }
 
-    public function subscribe(Request $request)
+    public function plans()
     {
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id'
-        ]);
-
-        $plan = Plan::findOrFail(
-            $request->plan_id
+        return ApiResponse::success(
+            PlanResource::collection(
+                $this->subscriptionService
+                    ->plans()
+            )
         );
+    }
 
-        $subscription = Subscription::create([
+    public function subscribe(
+        SubscribeRequest $request
+    )
+    {
+        $subscription =
+            $this->subscriptionService
+                ->subscribe(
+                    auth()->user(),
+                    $request->plan_id
+                );
 
-            'user_id' => auth()->id(),
-
-            'plan_id' => $plan->id,
-
-            'starts_at' => now(),
-
-            'expires_at' => now()
-                ->addDays($plan->duration_days),
-
-            'status' => 'active',
-
-            'provider' => 'manual'
-        ]);
-
-        Payment::create([
-
-            'user_id' => auth()->id(),
-
-            'subscription_id' => $subscription->id,
-
-            'amount' => $plan->price,
-
-            'status' => 'paid',
-
-            'provider' => 'manual'
-        ]);
-
-        return [
-            'message' => 'Subscription activated',
-            'subscription' => $subscription
-        ];
+        return ApiResponse::success(
+            new SubscriptionResource(
+                $subscription
+            ),
+            'Subscription activated'
+        );
     }
 
     public function current()
     {
-        return auth()
-            ->user()
-            ->activeSubscription;
+        return ApiResponse::success(
+            new SubscriptionResource(
+                $this->subscriptionService
+                    ->current(
+                        auth()->user()
+                    )
+            )
+        );
     }
 }

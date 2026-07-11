@@ -12,10 +12,15 @@ class ReadingSession extends Model
     protected $fillable = [
         'user_id',
         'book_id',
-        'start_time',
-        'end_time',
-        'pages_read',
+        'start_page',
+        'end_page',
+        'duration_seconds',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function book()
     {

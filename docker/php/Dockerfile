@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     libzip-dev \
+    libicu-dev \
     libonig-dev \
     libxml2-dev \
     libmagickwand-dev \
@@ -27,7 +28,9 @@ RUN docker-php-ext-install \
     exif \
     pcntl \
     bcmath \
-    gd
+    gd \
+    zip \
+    intl
 
 RUN pecl install redis && docker-php-ext-enable redis
 

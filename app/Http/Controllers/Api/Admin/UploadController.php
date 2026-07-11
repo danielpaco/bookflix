@@ -2,22 +2,31 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Support\ApiResponse;
+use App\Services\UploadService;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Http\Requests\Admin\UploadPdfRequest;
 
 class UploadController extends Controller
 {
-    public function uploadPdf(Request $request)
+    public function __construct(
+        private UploadService $uploadService
+    ) {}
+
+    public function uploadPdf(
+        UploadPdfRequest $request
+    )
     {
-        $request->validate([
-            'book_id' => 'required|exists:books,id',
-            'file' => 'required|mimes:pdf'
-        ]);
+        $path = $this
+            ->uploadService
+            ->uploadPdf(
+                $request->file('file')
+            );
 
-        $path = $request->file('file')->store('pdfs');
-
-        return response()->json([
-            'path' => $path
+        return ApiResponse::success([
+            'path'=>$path
         ]);
     }
 }

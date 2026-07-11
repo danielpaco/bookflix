@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ProcessController;
 use App\Http\Controllers\Api\Admin\BookAdminController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\ReadingController;
+use App\Http\Controllers\Api\OfflineController;
 
 Route::post('/register', [
     AuthController::class,
@@ -23,6 +24,16 @@ Route::post('/login', [
     AuthController::class,
     'login'
 ]);
+
+Route::post('/logout',[
+    AuthController::class,
+    'logout'
+])->middleware('auth:sanctum');
+
+Route::get('/me',[
+    AuthController::class,
+    'me'
+])->middleware('auth:sanctum');
 
 Route::get('/page', function (Request $request) {
 
@@ -84,8 +95,28 @@ Route::middleware([
 ])->group(function () {
 
     Route::get(
+        '/home',
+        [ReaderController::class, 'home']
+    );
+
+    Route::get(
         '/books',
         [ReaderController::class, 'books']
+    );
+
+    Route::get(
+        '/categories',
+        [ReaderController::class, 'categories']
+    );
+
+    Route::get(
+        '/tags',
+        [ReaderController::class, 'tags']
+    );
+
+    Route::get(
+        '/authors',
+        [ReaderController::class, 'authors']
     );
 
     Route::get(
@@ -96,6 +127,11 @@ Route::middleware([
     Route::get(
         '/books/{book}/pages/{page}',
         [ReaderController::class, 'page']
+    )->middleware('premium');
+
+    Route::get(
+        '/books/{book}/pages',
+        [ReaderController::class,'pages']
     );
 
     Route::post(
@@ -121,6 +157,57 @@ Route::middleware([
     Route::get(
         '/analytics',
         [ReadingController::class, 'analytics']
+    );
+
+    Route::post(
+        '/reading-session',
+        [ReadingController::class, 'storeSession']
+    );
+
+    Route::get(
+        '/continue-reading',
+        [ReadingController::class, 'continueReading']
+    );
+
+    Route::get(
+        '/favorites',
+        [ReadingController::class, 'favorites']
+    );
+
+    Route::post(
+        '/books/{book}/favorite',
+        [ReadingController::class, 'favorite']
+    );
+
+    Route::delete(
+        '/books/{book}/favorite',
+        [ReadingController::class, 'removeFavorite']
+    );
+
+    Route::get(
+        '/popular-books',
+        [ReadingController::class, 'popularBooks']
+    );
+
+    Route::get(
+        '/history',
+        [ReadingController::class, 'history']
+    );
+
+    Route::get(
+        '/notifications',
+        function () {
+            return auth()
+                ->user()
+                ->notifications()
+                ->latest()
+                ->paginate(20);
+        }
+    );
+
+    Route::get(
+        '/books/{book}/offline-package',
+        [OfflineController::class, 'package']
     );
 });
 
